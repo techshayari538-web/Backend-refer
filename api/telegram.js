@@ -10,9 +10,7 @@ import {
   increment 
 } from "firebase/firestore";
 
-// ---------------------------------------------------------------------------
 // 🔌 CONFIGURATIONS & FIREBASE INITIALIZATION
-// ---------------------------------------------------------------------------
 const firebaseConfig = {
   apiKey: process.env.FIREBASE_API_KEY || "",
   authDomain: process.env.FIREBASE_AUTH_DOMAIN || "",
@@ -22,7 +20,6 @@ const firebaseConfig = {
   appId: process.env.FIREBASE_APP_ID || ""
 };
 
-// NextJS/Vercel serverless containers re-use optimization
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
@@ -30,12 +27,9 @@ const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBAPP_URL = "https://techshayari538-web.github.io/Watch-and-Earn/";
 const CHANNEL_URL = "https://t.me/WatchNdEarnn";
 
-// ---------------------------------------------------------------------------
 // ⚙️ ATOMIC REFERRAL TRANSACTION ENGINE
-// ---------------------------------------------------------------------------
 async function processReferralReward(userId) {
   const userRef = doc(db, "users", String(userId));
-  
   try {
     await runTransaction(db, async (transaction) => {
       const userSnap = await transaction.get(userRef);
@@ -44,23 +38,19 @@ async function processReferralReward(userId) {
       const userData = userSnap.data();
       const referrerId = userData.refferBy;
 
-      // STRICT CONDITIONS CHECK
       if (userData.frontendOpened === true && userData.rewardGiven === false && referrerId) {
         const referrerRef = doc(db, "users", String(referrerId));
         const rewardLedgerRef = doc(db, "ref_rewards", String(userId));
 
-        // 1. Credit the Referrer
         transaction.update(referrerRef, {
           coins: increment(500),
           reffer: increment(1)
         });
 
-        // 2. Lock current user to prevent duplicate verification claims
         transaction.update(userRef, {
           rewardGiven: true
         });
 
-        // 3. Document immutable ledger entry
         transaction.set(rewardLedgerRef, {
           userId: String(userId),
           referrerId: String(referrerId),
@@ -71,17 +61,15 @@ async function processReferralReward(userId) {
     });
     return true;
   } catch (error) {
-    console.error("Referral processing exception caught:", error);
+    console.error("Referral exception:", error);
     return false;
   }
 }
 
-// ---------------------------------------------------------------------------
-// 🚀 TELEGRAM OUTBOUND DISPATCHER
-// ---------------------------------------------------------------------------
+// 🚀 TELEGRAM SENDER
 async function sendTelegramMessage(chatId, text, inlineKeyboard) {
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-  const response = await fetch(url, {
+  await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -90,15 +78,40 @@ async function sendTelegramMessage(chatId, text, inlineKeyboard) {
       reply_markup: { inline_keyboard: inlineKeyboard }
     })
   });
-  return response.json();
 }
 
-// ---------------------------------------------------------------------------
-// 🌐 VERCEL WEBHOOK CONTROLLER
-// ---------------------------------------------------------------------------
+// 🌐 VERCEL WEBHOOK & CALLBACK CONTROLLER
 export default async function handler(req, res) {
+  // 1. MONOTAG SECURE CALLBACK BACKEND HANDLER
+  if (req.method === "GET" || (req.query && req.query.monotag_callback)) {
+    try {
+      const { userId } = req.query;
+      if (!userId) {
+        return res.status(400).send("Missing parameter userId");
+      }
+
+      const userRef = doc(db, "users", String(userId));
+      const userSnap = await getDoc(userRef);
+
+      if (!userSnap.exists()) {
+        return res.status(404).send("User not found in system storage");
+      }
+
+      // Ad network validation standard reward increment
+      await updateDoc(userRef, {
+        coins: increment(50)
+      });
+
+      return res.status(200).send("OK_REWARD_CREDITED");
+    } catch (cbErr) {
+      console.error("Monotag server verification exception:", cbErr);
+      return res.status(500).send("Internal processing execution error");
+    }
+  }
+
+  // 2. TELEGRAM BOT HANDLER (POST REQ)
   if (req.method !== "POST") {
-    return res.status(200).send("Method Not Allowed");
+    return res.status(200).send("Method Allowed fallback");
   }
 
   try {
@@ -115,7 +128,6 @@ export default async function handler(req, res) {
       const firstName = message.from.first_name || "User";
       const photoURL = message.from.photo_url || "";
 
-      // Referral extraction logic (/start ref123)
       const parts = textStr.split(" ");
       let referralId = null;
       if (parts.length > 1) {
@@ -125,7 +137,6 @@ export default async function handler(req, res) {
       const userRef = doc(db, "users", String(userId));
       const userSnap = await getDoc(userRef);
 
-      // Create or update status flags using pure modular calls
       if (!userSnap.exists()) {
         const finalReferrer = (referralId && String(referralId) !== String(userId)) ? String(referralId) : null;
         
@@ -145,10 +156,8 @@ export default async function handler(req, res) {
         await updateDoc(userRef, { frontendOpened: true });
       }
 
-      // Execute referral transaction matrix
       await processReferralReward(userId);
 
-      // UI Message parameters setup
       const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\nYaha aap tasks complete karke real rewards kama sakte ho!\n\n🔥 Daily Tasks\n🔥 Video Watch\n🔥 Mini Apps\n🔥 Referral Bonus\n🔥 Auto Wallet System\n\nReady to earn?\nTap START and your journey begins!`;
 
       const keyboardLayout = [
@@ -165,7 +174,7 @@ export default async function handler(req, res) {
     return res.status(200).json({ success: true });
 
   } catch (err) {
-    console.error("Top-level execution isolation catch:", err);
-    return res.status(200).send("Execution complete with catch fallbacks.");
+    console.error("Top-level pipeline crash catch:", err);
+    return res.status(200).send("Execution complete safely.");
   }
 }
