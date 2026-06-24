@@ -1,0 +1,19 @@
+{
+  "name": "telegram-mini-app-backend",
+  "version": "1.0.0",
+  "description": "Serverless Telegram Bot Backend for Vercel",
+  "main": "api/telegram.js",
+  "type": "module",
+  "scripts": {
+    "start": "node api/telegram.js"
+  },
+  "dependencies": {
+    "firebase": "^10.7.1",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "author": "",
+  "license": "ISC"
+}
