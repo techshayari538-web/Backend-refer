@@ -1,8 +1,10 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { 
   getFirestore, 
   doc, 
   getDoc, 
+  setDoc,
+  updateDoc,
   runTransaction, 
   serverTimestamp,
   increment 
@@ -20,8 +22,8 @@ const firebaseConfig = {
   appId: process.env.FIREBASE_APP_ID || ""
 };
 
-// Initialize Firebase once globally per container life-cycle
-const app = initializeApp(firebaseConfig);
+// NextJS/Vercel serverless containers re-use optimization
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -29,62 +31,20 @@ const WEBAPP_URL = "https://techshayari538-web.github.io/Watch-and-Earn/";
 const CHANNEL_URL = "https://t.me/WatchNdEarnn";
 
 // ---------------------------------------------------------------------------
-// ⚙️ FIREBASE ENGINE & CORE BUSINESS UTILITIES
+// ⚙️ ATOMIC REFERRAL TRANSACTION ENGINE
 // ---------------------------------------------------------------------------
-
-/**
- * Creates or merges a user profile while tracking the initial referral code.
- */
-async function createOrEnsureUser(userId, firstName, photoURL, referralId) {
-  const userRef = doc(db, "users", String(userId));
-  const userSnap = await getDoc(userRef);
-
-  if (!userSnap.exists()) {
-    // Determine clean clean referral parent link (no self-referrals allowed)
-    const finalReferrer = (referralId && String(referralId) !== String(userId)) ? String(referralId) : null;
-    
-    const newUserObj = {
-      id: String(userId),
-      name: firstName || "Telegram User",
-      photoURL: photoURL || "",
-      coins: 0,
-      reffer: 0,
-      refferBy: finalReferrer,
-      tasksCompleted: 0,
-      totalWithdrawals: 0,
-      frontendOpened: true, // Marked true within this invocation
-      rewardGiven: false
-    };
-    await firebase.firestore().collection("users").doc(String(userId)).set(newUserObj); // Fallback compat conceptually
-    // Using Modular syntax:
-    // await setDoc(userRef, newUserObj); 
-    // Since we want this inside the main request execution thread cleanly, we return it to run under transaction or direct execution:
-    return newUserObj;
-  } else {
-    // If user already exists, update frontendOpened to true inline
-    const existingData = userSnap.data();
-    if (!existingData.frontendOpened) {
-      await firebase.firestore().collection("users").doc(String(userId)).update({ frontendOpened: true });
-    }
-    return { ...existingData, frontendOpened: true };
-  }
-}
-
-/**
- * Executes an atomic, idempotent transaction to issue the referral reward.
- */
 async function processReferralReward(userId) {
   const userRef = doc(db, "users", String(userId));
   
   try {
     await runTransaction(db, async (transaction) => {
       const userSnap = await transaction.get(userRef);
-      if (!userSnap.exists()) return;
+      if (!userSnap.exists) return;
 
       const userData = userSnap.data();
       const referrerId = userData.refferBy;
 
-      // STRICT ONE-TIME CONDITIONS GATEWAY
+      // STRICT CONDITIONS CHECK
       if (userData.frontendOpened === true && userData.rewardGiven === false && referrerId) {
         const referrerRef = doc(db, "users", String(referrerId));
         const rewardLedgerRef = doc(db, "ref_rewards", String(userId));
@@ -95,12 +55,12 @@ async function processReferralReward(userId) {
           reffer: increment(1)
         });
 
-        // 2. Mark current user reward given to prevent duplicate claims
+        // 2. Lock current user to prevent duplicate verification claims
         transaction.update(userRef, {
           rewardGiven: true
         });
 
-        // 3. Create immutable ledger entry
+        // 3. Document immutable ledger entry
         transaction.set(rewardLedgerRef, {
           userId: String(userId),
           referrerId: String(referrerId),
@@ -111,13 +71,13 @@ async function processReferralReward(userId) {
     });
     return true;
   } catch (error) {
-    console.error("Referral transaction fault isolation error:", error);
+    console.error("Referral processing exception caught:", error);
     return false;
   }
 }
 
 // ---------------------------------------------------------------------------
-// 🚀 TELEGRAM OUTBOUND API SENDER
+// 🚀 TELEGRAM OUTBOUND DISPATCHER
 // ---------------------------------------------------------------------------
 async function sendTelegramMessage(chatId, text, inlineKeyboard) {
   const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
@@ -134,48 +94,44 @@ async function sendTelegramMessage(chatId, text, inlineKeyboard) {
 }
 
 // ---------------------------------------------------------------------------
-// 🌐 VERCEL SERVERLESS WEBHOOK HANDLER
+// 🌐 VERCEL WEBHOOK CONTROLLER
 // ---------------------------------------------------------------------------
 export default async function handler(req, res) {
-  // Gracefully acknowledge non-POST checkups or ping integrations
   if (req.method !== "POST") {
-    return res.status(200).send("Serverless Endpoint Operating Normally.");
+    return res.status(200).send("Method Not Allowed");
   }
 
   try {
     const { message } = req.body;
     if (!message || !message.text) {
-      return res.status(200).send("No message structure received.");
+      return res.status(200).send("No valid payload detected.");
     }
 
     const chatId = message.chat.id;
     const textStr = message.text.trim();
 
-    // 1. Check for /start command parsing
     if (textStr.startsWith("/start")) {
       const userId = message.from.id;
-      const firstName = message.from.first_name;
-      // Note: Full high-res Telegram avatar extraction usually requires calling getUserProfilePhotos. 
-      // We parse an optional fallback string here.
+      const firstName = message.from.first_name || "User";
       const photoURL = message.from.photo_url || "";
 
-      // Extract referral ID parameter: `/start ref123` or `/start 123`
+      // Referral extraction logic (/start ref123)
       const parts = textStr.split(" ");
       let referralId = null;
       if (parts.length > 1) {
-        referralId = parts[1].replace("ref", ""); // Strip descriptive text if any
+        referralId = parts[1].replace("ref", "").trim();
       }
 
-      // 2. State Sync: Ensure user existence profile is stored
       const userRef = doc(db, "users", String(userId));
       const userSnap = await getDoc(userRef);
 
+      // Create or update status flags using pure modular calls
       if (!userSnap.exists()) {
         const finalReferrer = (referralId && String(referralId) !== String(userId)) ? String(referralId) : null;
-        // Construct entity object matching criteria
-        await firebase.firestore().collection("users").doc(String(userId)).set({
+        
+        await setDoc(userRef, {
           id: String(userId),
-          name: firstName || "Telegram User",
+          name: firstName,
           photoURL: photoURL,
           coins: 0,
           reffer: 0,
@@ -186,14 +142,14 @@ export default async function handler(req, res) {
           rewardGiven: false
         });
       } else {
-        await firebase.firestore().collection("users").doc(String(userId)).update({ frontendOpened: true });
+        await updateDoc(userRef, { frontendOpened: true });
       }
 
-      // 3. Execution Pipeline: Fire one-time reward transactional check immediately
+      // Execute referral transaction matrix
       await processReferralReward(userId);
 
-      // 4. Outbound Interface Dispatcher
-      const welcomeCaption = `👋 Hi! Welcome ${firstName || "User"} ⭐\nYaha aap tasks complete karke real rewards kama sakte ho!\n\n🔥 Daily Tasks\n🔥 Video Watch\n🔥 Mini Apps\n🔥 Referral Bonus\n🔥 Auto Wallet System\n\nReady to earn?\nTap START and your journey begins!`;
+      // UI Message parameters setup
+      const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\nYaha aap tasks complete karke real rewards kama sakte ho!\n\n🔥 Daily Tasks\n🔥 Video Watch\n🔥 Mini Apps\n🔥 Referral Bonus\n🔥 Auto Wallet System\n\nReady to earn?\nTap START and your journey begins!`;
 
       const keyboardLayout = [
         [{ text: "▶ Open App", web_app: { url: WEBAPP_URL } }],
@@ -206,12 +162,10 @@ export default async function handler(req, res) {
       await sendTelegramMessage(chatId, welcomeCaption, keyboardLayout);
     }
 
-    // Complete the event loop execution thread cleanly for Vercel environments
     return res.status(200).json({ success: true });
 
   } catch (err) {
-    console.error("Top-level execution runtime error catching:", err);
-    // Always return 200 to Telegram platform gateway endpoints to avoid retry loops locking function execution
-    return res.status(200).send("Isolated error handoff occurred.");
+    console.error("Top-level execution isolation catch:", err);
+    return res.status(200).send("Execution complete with catch fallbacks.");
   }
 }
