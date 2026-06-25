@@ -161,7 +161,7 @@ export default async function handler(req, res) {
       const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\nYaha aap tasks complete karke real rewards kama sakte ho!\n\n🔥 Daily Tasks\n🔥 Video Watch\n🔥 Mini Apps\n🔥 Referral Bonus\n🔥 Auto Wallet System\n\nReady to earn?\nTap START and your journey begins!`;
 
       const keyboardLayout = [
-        [{ text: "▶ Open App", web_app: { url: WEBAPP_URL } }],
+        [{ text: "▶ Start Earn", web_app: { url: WEBAPP_URL } }],
         [
           { text: "📢 Channel", url: CHANNEL_URL },
           { text: "🌐 Community", url: CHANNEL_URL }
