@@ -158,7 +158,7 @@ export default async function handler(req, res) {
 
       await processReferralReward(userId);
 
-      const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\nYaha aap tasks complete karke real rewards kama sakte ho!\n\n🔥 Daily Tasks\n🔥 Video Watch\n🔥 Mini Apps\n🔥 Referral Bonus\n🔥 Auto Wallet System\n\nReady to earn?\nTap START and your journey begins!`;
+      const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\n\nAapka account successfully create ho gaya hai. Ab aap ghar baithe sirf videos dekhkar acchi earning kar sakte hain.\n\n🔥 Kamane ke tarike:\n\n1️⃣ Watch Videos: Ads aur short videos dekhkar points/cash kamayein.\n2️⃣ Daily Bonus: Rozana free bonus claim karein.\n🔥 Refer & Earn: Apne doston ko invite karein aur har refer par extra bonus payein.\n\nReady to earn?\n👇 Niche diye gaye menu buttons ka use karke earning shuru karein!`;
 
       const keyboardLayout = [
         [{ text: "▶ Start Earn", web_app: { url: WEBAPP_URL } }],
