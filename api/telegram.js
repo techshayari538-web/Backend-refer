@@ -26,6 +26,7 @@ const db = getFirestore(app);
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBAPP_URL = "https://techshayari538-web.github.io/Watch-and-Earn/";
 const CHANNEL_URL = "https://t.me/WatchNdEarnn";
+const SUPPORT_URL = "https://t.me/WatchNdEarnSupport";
 
 // ⚙️ ATOMIC REFERRAL TRANSACTION ENGINE
 async function processReferralReward(userId) {
@@ -164,7 +165,7 @@ export default async function handler(req, res) {
         [{ text: "▶ Start Earn", web_app: { url: WEBAPP_URL } }],
         [
           { text: "📢 Channel", url: CHANNEL_URL },
-          { text: "🌐 Community", url: CHANNEL_URL }
+          { text: "👨🏻‍💻 Support", url: SUPPORT_URL }
         ]
       ];
 
