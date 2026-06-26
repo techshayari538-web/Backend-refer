@@ -44,7 +44,7 @@ async function processReferralReward(userId) {
         const rewardLedgerRef = doc(db, "ref_rewards", String(userId));
 
         transaction.update(referrerRef, {
-          coins: increment(500),
+          coins: increment(800),
           reffer: increment(1)
         });
 
@@ -55,7 +55,7 @@ async function processReferralReward(userId) {
         transaction.set(rewardLedgerRef, {
           userId: String(userId),
           referrerId: String(referrerId),
-          reward: 500,
+          reward: 800,
           createdAt: serverTimestamp()
         });
       }
@@ -106,7 +106,7 @@ export default async function handler(req, res) {
       return res.status(200).send("OK_REWARD_CREDITED");
     } catch (cbErr) {
       console.error("Monotag server verification exception:", cbErr);
-      return res.status(500).send("Internal processing execution error");
+      return res.status(800).send("Internal processing execution error");
     }
   }
 
@@ -159,7 +159,7 @@ export default async function handler(req, res) {
 
       await processReferralReward(userId);
 
-      const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\n\nAapka account successfully create ho gaya hai. Ab aap ghar baithe sirf videos dekhkar acchi earning kar sakte hain.\n\n🔥 Kamane ke tarike:\n\n1️⃣ Watch Videos: Ads aur short videos dekhkar points/cash kamayein.\n2️⃣ Daily Bonus: Rozana free bonus claim karein.\n3️⃣ Refer & Earn: Apne doston ko invite karein aur har refer par extra bonus payein. Upto 500 Coins\n\nReady to earn?\n👇 Niche diye gaye menu buttons ka use karke earning shuru karein!`;
+      const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\n\nAapka account successfully create ho gaya hai. Ab aap ghar baithe sirf videos dekhkar acchi earning kar sakte hain.\n\n🔥 Kamane ke tarike:\n\n1️⃣ Watch Videos: Ads aur short videos dekhkar points/cash kamayein.\n2️⃣ Daily Bonus: Rozana free bonus claim karein.\n3️⃣ Refer & Earn: Apne doston ko invite karein aur har refer par extra bonus payein. Upto 800 Coins\n\nReady to earn?\n👇 Niche diye gaye menu buttons ka use karke earning shuru karein!`;
 
       const keyboardLayout = [
         [{ text: "▶ Open and Start Earn", web_app: { url: WEBAPP_URL } }],
