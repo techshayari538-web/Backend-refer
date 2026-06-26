@@ -162,7 +162,7 @@ export default async function handler(req, res) {
       const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\n\nAapka account successfully create ho gaya hai. Ab aap ghar baithe sirf videos dekhkar acchi earning kar sakte hain.\n\n🔥 Kamane ke tarike:\n\n1️⃣ Watch Videos: Ads aur short videos dekhkar points/cash kamayein.\n2️⃣ Daily Bonus: Rozana free bonus claim karein.\n3️⃣ Refer & Earn: Apne doston ko invite karein aur har refer par extra bonus payein. Upto 500 Coins\n\nReady to earn?\n👇 Niche diye gaye menu buttons ka use karke earning shuru karein!`;
 
       const keyboardLayout = [
-        [{ text: "▶ Start Earn", web_app: { url: WEBAPP_URL } }],
+        [{ text: "▶ Open and Start Earn", web_app: { url: WEBAPP_URL } }],
         [
           { text: "📢 Channel", url: CHANNEL_URL },
           { text: "👨🏻‍💻 Support", url: SUPPORT_URL }
