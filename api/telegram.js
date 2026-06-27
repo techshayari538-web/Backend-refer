@@ -98,7 +98,6 @@ export default async function handler(req, res) {
         return res.status(404).send("User not found in system storage");
       }
 
-      // Ad network validation standard reward increment
       await updateDoc(userRef, {
         coins: increment(50)
       });
@@ -141,17 +140,19 @@ export default async function handler(req, res) {
       if (!userSnap.exists()) {
         const finalReferrer = (referralId && String(referralId) !== String(userId)) ? String(referralId) : null;
         
+        // FIX: Pehli baar sign up karne par user ko yahan 200 coins milenge!
         await setDoc(userRef, {
           id: String(userId),
           name: firstName,
           photoURL: photoURL,
-          coins: 0,
+          coins: 200, 
           reffer: 0,
           refferBy: finalReferrer,
           tasksCompleted: 0,
           totalWithdrawals: 0,
           frontendOpened: true,
-          rewardGiven: false
+          rewardGiven: false,
+          lastBonusClaimed: null // Daily bonus control ke liye naya field
         });
       } else {
         await updateDoc(userRef, { frontendOpened: true });
@@ -159,7 +160,7 @@ export default async function handler(req, res) {
 
       await processReferralReward(userId);
 
-      const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\n\nAapka account successfully create ho gaya hai. Ab aap ghar baithe sirf videos dekhkar acchi earning kar sakte hain.\n\n🔥 Kamane ke tarike:\n\n1️⃣ Watch Videos: Ads aur short videos dekhkar points/cash kamayein.\n2️⃣ Daily Bonus: Rozana free bonus claim karein.\n3️⃣ Refer & Earn: Apne doston ko invite karein aur har refer par extra bonus payein. Upto 800 Coins\n\nReady to earn?\n👇 Niche diye gaye Start Earn button ka use karke earning shuru karein!`;
+      const welcomeCaption = `👋 Hi! Welcome ${firstName} ⭐\n\nAapka account successfully create ho gaya hai. Ab aap ghar baithe sirf videos dekhkar acchi earning kar sakte hain.\n\n🎁 Welcome Bonus: 200 Coins aapke account me add kar diye gaye hain!\n\n🔥 Kamane ke tarike:\n\n1️⃣ Watch Videos: Ads aur short videos dekhkar points/cash kamayein.\n2️⃣ Daily Bonus: Rozana free bonus claim karein.\n3️⃣ Refer & Earn: Apne doston ko invite karein aur har refer par extra bonus payein. Upto 800 Coins\n\nReady to earn?\n👇 Niche diye gaye Start Earn button ka use karke earning shuru karein!`;
 
       const keyboardLayout = [
         [{ text: "▶ Open and Start Earn", web_app: { url: WEBAPP_URL } }],
